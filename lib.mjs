@@ -61,24 +61,6 @@ function csvToList(csv) {
   );
 }
 
-async function printJsonTable(json) {
-  if (!json?.[0]) return false;
-
-  const titles = Object.keys(json[0]);
-  const csv =
-    titles.join(",") +
-    "\n" +
-    json
-      .map((i) =>
-        titles.reduce((pre, cur) => (pre += i[cur] + ","), "").slice(0, -1)
-      )
-      .join("\n");
-
-  await $`echo ${csv}|column -s, -t`.pipe(process.stdout);
-
-  return true;
-}
-
 async function query(query_object) {
   const rsp = await api(query_object);
   const text = await rsp.text();
@@ -185,9 +167,9 @@ async function parseFundList() {
 
   const total = funds.reduce((pre, cur) => (pre += cur.assets), 0);
 
-  console.log(chalk.red(`\n基金总资产(${funds.length}只): `, total, "元\n"));
+  console.log(chalk.red("\n基金总资产: ", total, "元\n"));
 
-  printJsonTable(funds);
+  console.table(funds);
 
   return funds;
 }
@@ -235,7 +217,7 @@ async function printStocksDistribution(funds) {
 
   console.log(chalk.red("\n基金中股票总资产: ", total, "元\n"));
 
-  printJsonTable(stocksDistribution);
+  console.table(stocksDistribution);
 
   return true;
 }
