@@ -37,7 +37,7 @@ async function login() {
     await fs.outputFile(TOKEN_PATH, text);
     return true;
   } else {
-    console.log("\n" + chalk.red(text) + "\n");
+    console.log("\n" + chalk.red("<login> -> ", text) + "\n");
     return false;
   }
 }
@@ -85,8 +85,17 @@ async function query(query_object) {
 
   if (rsp.ok && text) {
     return csvToList(text);
+  } else if (!text) {
+    console.log(
+      chalk.red(
+        "<query> -> ",
+        "查询不到相关信息:",
+        JSON.stringify(query_object)
+      )
+    );
+    return false;
   } else {
-    console.log(chalk.red(text));
+    console.log(chalk.red("<query> -> ", text));
     return false;
   }
 }
@@ -95,7 +104,20 @@ async function parseFundList() {
   if (!(await fs.pathExists(FUNDS_PATH))) return false;
 
   const funds = await fs.readJson(FUNDS_PATH, { throws: false });
-  if (!funds) return false;
+  if (!funds.length) return false;
+
+  if (new Set(funds.map((i) => i.order_book_id)).size !== funds.length) {
+    funds.forEach((fund, idx) => {
+      if (
+        funds.findIndex((i) => fund.order_book_id === i.order_book_id) !== idx
+      ) {
+        console.log(
+          chalk.red("parseFundList -> ", fund.order_book_id, " 基金重复")
+        );
+      }
+    });
+    return false;
+  }
 
   let [instruments, nav] = await Promise.all([
     query({
@@ -112,9 +134,39 @@ async function parseFundList() {
     }),
   ]);
 
-  nav = nav.filter(
+  if (instruments?.length !== funds.length) {
+    funds.forEach((fund) => {
+      if (!instruments.some?.((i) => fund.order_book_id === i.order_book_id)) {
+        console.log(
+          chalk.red(
+            "parseFundList -> ",
+            "未查询到 instrument 信息 ",
+            fund.order_book_id
+          )
+        );
+      }
+    });
+    return false;
+  }
+
+  nav = nav.filter?.(
     (i, idx, arr) => i.order_book_id !== arr[idx + 1]?.order_book_id
   );
+
+  if (nav?.length !== funds.length) {
+    funds.forEach((fund) => {
+      if (!nav.some?.((i) => fund.order_book_id === i.order_book_id)) {
+        console.log(
+          chalk.red(
+            "parseFundList -> ",
+            "未查询到 nav 信息 ",
+            fund.order_book_id
+          )
+        );
+      }
+    });
+    return false;
+  }
 
   funds.map((fund) =>
     Object.assign(
@@ -133,7 +185,7 @@ async function parseFundList() {
 
   const total = funds.reduce((pre, cur) => (pre += cur.assets), 0);
 
-  console.log(chalk.red("\n基金总资产：", total, "元\n"));
+  console.log(chalk.red(`\n基金总资产(${funds.length}只): `, total, "元\n"));
 
   printJsonTable(funds);
 
@@ -181,7 +233,7 @@ async function printStocksDistribution(funds) {
 
   const total = stocksDistribution.reduce((pre, cur) => (pre += cur.assets), 0);
 
-  console.log(chalk.red("\n基金中股票总资产：", total, "元\n"));
+  console.log(chalk.red("\n基金中股票总资产: ", total, "元\n"));
 
   printJsonTable(stocksDistribution);
 
