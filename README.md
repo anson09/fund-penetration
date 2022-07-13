@@ -5,3 +5,4 @@
 ## TODO
 
 - [ ] refactor to a public web app that doesn't need ricequant account
+- [ ] mobile adaptive
